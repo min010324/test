@@ -1,0 +1,27 @@
+The command:
+./tiffcp -p separate poc.tiff output.tiff
+
+Stacktrace(with ASAN):
+=================================================================
+==17449==ERROR: AddressSanitizer: heap-buffer-overflow on address 0xb58006a0 at pc 0x0804d903 bp 0xbfeb5068 sp 0xbfeb5058
+READ of size 1 at 0xb58006a0 thread T0
+    #0 0x804d902 in cpContig2SeparateByRow /home/lyk/tiff-4.0.7-asan/tools/tiffcp.c:1091
+    #1 0x804b31d in tiffcp /home/lyk/tiff-4.0.7-asan/tools/tiffcp.c:815
+    #2 0x804b31d in main /home/lyk/tiff-4.0.7-asan/tools/tiffcp.c:304
+    #3 0xb6fd0636 in __libc_start_main (/lib/i386-linux-gnu/libc.so.6+0x18636)
+    #4 0x804c81b  (/home/lyk/inscmp/afl-2.33b/test/tiffcp_a+0x804c81b)
+
+0xb58006a0 is located 0 bytes to the right of 16-byte region [0xb5800690,0xb58006a0)
+allocated by thread T0 here:
+    #0 0xb7274dee in malloc (/usr/lib/i386-linux-gnu/libasan.so.2+0x96dee)
+    #1 0x804d6d9 in cpContig2SeparateByRow /home/lyk/tiff-4.0.7-asan/tools/tiffcp.c:1072
+
+SUMMARY: AddressSanitizer: heap-buffer-overflow /home/lyk/tiff-4.0.7-asan/tools/tiffcp.c:1091 cpContig2SeparateByRow
+
+
+Analysis:
+This is a heap based buffer overflow that happens in the function "cpContig2SeparateByRow" in tools/tiffcp.c.
+The issue is that in the for loop at line 1143 in tiffcp.c, the varialbe 'imagewidth' can be larger than 'scanlinesizeout' or 'scanlinesizein/spp' \
+, which can lead to out of bound write or read accordingly.
+The attached PoC is a case of out of bound read, where 'imagewidth' is 32, 'scanlinesizein' is 16 and 'spp' is 1.
+
